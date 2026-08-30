@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentralbordet – Lønnsomhet og kapasitetsanalyse Jan–Mai 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #1E2761;
+    --navy-light: #2D3A80;
+    --ice: #CADCFC;
+    --ice-soft: #EAF0FF;
+    --accent: #4A90E2;
+    --gold: #F5A623;
+    --green: #27AE60;
+    --red: #E74C3C;
+    --orange: #E67E22;
+    --white: #FFFFFF;
+    --gray-light: #F4F6FB;
+    --gray: #8899AA;
+    --text: #1A2340;
+  }
+ 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+ 
+  .slides-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+  }
+ 
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .slide.active {
+    display: flex;
+    opacity: 1;
+  }
+ 
+  /* NAV */
+  .nav-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 52px;
+    background: rgba(10,15,45,0.92);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    z-index: 100;
+    border-top: 1px solid rgba(202,220,252,0.15);
+  }
+  .nav-btn {
+    background: none;
+    border: 1.5px solid var(--ice);
+    color: var(--ice);
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .nav-btn:hover { background: var(--ice); color: var(--navy); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .slide-counter { color: var(--ice); font-size: 14px; min-width: 90px; text-align: center; letter-spacing: 1px; }
+  .slide-dots { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(202,220,252,0.3); cursor: pointer; transition: background 0.2s, transform 0.2s; }
+  .dot.active { background: var(--ice); transform: scale(1.3); }
+ 
+  /* SLIDE 1 – TITLE */
+  #slide-1 {
+    background: linear-gradient(135deg, #0D1440 0%, #1E2761 55%, #2D3A80 100%);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-bottom: 52px;
+  }
+  .title-company { font-size: 18px; letter-spacing: 4px; text-transform: uppercase; color: var(--ice); opacity: 0.7; margin-bottom: 10px; }
+  .title-main { font-size: 62px; font-weight: bold; color: var(--white); line-height: 1.1; margin-bottom: 8px; }
+  .title-sub { font-size: 22px; color: var(--ice); opacity: 0.9; margin-bottom: 6px; }
+  .title-period { font-size: 16px; color: var(--ice); opacity: 0.6; letter-spacing: 2px; margin-bottom: 50px; }
+  .title-kpis { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
+  .title-kpi { text-align: center; padding: 20px 30px; background: rgba(255,255,255,0.07); border: 1px solid rgba(202,220,252,0.2); border-radius: 12px; }
+  .title-kpi-val { font-size: 38px; font-weight: bold; color: var(--gold); line-height: 1; }
+  .title-kpi-label { font-size: 13px; color: var(--ice); opacity: 0.8; margin-top: 6px; max-width: 140px; }
+ 
+  /* LIGHT / DARK base */
+  .slide-light { background: var(--gray-light); color: var(--text); }
+  .slide-dark { background: linear-gradient(135deg, #0D1440 0%, #1E2761 100%); color: var(--white); }
+ 
+  .slide-header { padding: 28px 60px 16px; border-bottom: 2px solid; }
+  .slide-light .slide-header { border-color: rgba(30,39,97,0.12); }
+  .slide-dark .slide-header { border-color: rgba(202,220,252,0.15); }
+  .slide-title { font-size: 26px; font-weight: bold; line-height: 1.2; }
+  .slide-light .slide-title { color: var(--navy); }
+  .slide-dark .slide-title { color: var(--white); }
+ 
+  .slide-body { flex: 1; padding: 22px 60px 60px; overflow: hidden; display: flex; flex-direction: column; }
+ 
+  /* KPI GRID */
+  .kpi-grid { display: grid; gap: 14px; }
+  .kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .kpi-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-card { border-radius: 12px; padding: 18px; text-align: center; }
+  .slide-light .kpi-card { background: var(--white); box-shadow: 0 2px 12px rgba(30,39,97,0.08); }
+  .slide-dark .kpi-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(202,220,252,0.15); }
+  .kpi-val { font-size: 32px; font-weight: bold; line-height: 1; color: var(--navy); }
+  .slide-dark .kpi-val { color: var(--gold); }
+  .kpi-label { font-size: 13px; color: var(--gray); margin-top: 6px; line-height: 1.3; }
+  .slide-dark .kpi-label { color: var(--ice); opacity: 0.75; }
+  .kpi-note { font-size: 11px; color: var(--gray); margin-top: 4px; font-style: italic; }
+ 
+  .note-box { margin-top: 14px; padding: 11px 16px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+  .slide-light .note-box { background: var(--ice-soft); color: var(--navy); border-left: 3px solid var(--accent); }
+  .slide-dark .note-box { background: rgba(202,220,252,0.08); color: var(--ice); border-left: 3px solid var(--gold); }
+ 
+  /* TEAM */
+  .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .team-card { background: var(--white); border-radius: 12px; padding: 16px; box-shadow: 0 2px 12px rgba(30,39,97,0.08); position: relative; }
+  .team-name { font-size: 15px; font-weight: bold; color: var(--navy); margin-bottom: 4px; }
+  .team-pct { display: inline-block; background: var(--navy); color: var(--white); font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 20px; margin-bottom: 6px; }
+  .team-pct.pct-60 { background: var(--accent); }
+  .team-pct.pct-vakt { background: var(--gray); }
+  .team-salary { font-size: 20px; font-weight: bold; color: var(--navy); }
+  .team-role { font-size: 12px; color: var(--gray); margin-top: 2px; }
+ 
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { background: var(--navy); color: var(--white); padding: 10px 13px; text-align: left; font-weight: 600; font-size: 12px; }
+  .data-table th:first-child { border-radius: 8px 0 0 0; }
+  .data-table th:last-child { border-radius: 0 8px 0 0; text-align: right; }
+  .data-table td { padding: 8px 13px; border-bottom: 1px solid rgba(30,39,97,0.07); color: var(--text); }
+  .data-table td:last-child { text-align: right; font-weight: 600; color: var(--navy); }
+  .data-table tr:nth-child(even) td { background: rgba(74,144,226,0.04); }
+  .data-table tr:hover td { background: var(--ice-soft); }
+ 
+  /* SLIDE 4 */
+  .chart-table-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1; align-items: start; }
+  .chart-wrap { position: relative; height: 240px; }
+ 
+  /* SLIDE 5 */
+  .profit-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; }
+  .profit-left { display: flex; flex-direction: column; gap: 10px; }
+  .profit-kpi { background: var(--white); border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(30,39,97,0.07); display: flex; align-items: center; gap: 14px; }
+  .profit-kpi-val { font-size: 24px; font-weight: bold; color: var(--navy); min-width: 130px; }
+  .profit-kpi-label { font-size: 13px; color: var(--gray); line-height: 1.3; }
+  .profit-right { display: flex; flex-direction: column; }
+  .month-row { display: grid; grid-template-columns: 70px 1fr 90px 70px; padding: 9px 0; border-bottom: 1px solid rgba(30,39,97,0.07); align-items: center; gap: 10px; font-size: 13px; }
+  .month-row-head { font-weight: bold; color: var(--gray); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .month-name { font-weight: 600; color: var(--navy); }
+  .month-ebitda { font-weight: bold; color: var(--navy); text-align: right; }
+  .month-margin { text-align: right; font-weight: bold; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+  .margin-hi { background: rgba(39,174,96,0.12); color: var(--green); }
+  .margin-mid { background: rgba(74,144,226,0.12); color: var(--accent); }
+  .margin-lo { background: rgba(231,76,60,0.1); color: var(--red); }
+  .pbar-wrap { margin-top: 3px; }
+  .pbar-bg { height: 5px; background: rgba(30,39,97,0.1); border-radius: 3px; }
+  .pbar-fill { height: 5px; border-radius: 3px; }
+ 
+  /* SLIDE 6 */
+  .sl-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 22px; flex: 1; }
+  .sl-stats { display: flex; flex-direction: column; gap: 10px; }
+  .sl-issues { display: flex; flex-direction: column; gap: 8px; }
+  .issue-item { display: flex; align-items: flex-start; gap: 10px; background: var(--white); border-radius: 10px; padding: 11px 14px; box-shadow: 0 2px 8px rgba(30,39,97,0.06); font-size: 13px; color: var(--text); line-height: 1.4; }
+  .issue-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+ 
+  /* SLIDE 7 */
+  .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; }
+  .cap-box { border-radius: 14px; padding: 22px; }
+  .cap-box-before { background: rgba(30,39,97,0.08); border: 1px solid rgba(30,39,97,0.15); }
+  .cap-box-after { background: var(--navy); color: var(--white); }
+  .cap-label { font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+  .cap-box-before .cap-label { color: var(--navy); }
+  .cap-box-after .cap-label { color: var(--gold); }
+  .cap-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.07); font-size: 14px; }
+  .cap-box-after .cap-row { border-color: rgba(255,255,255,0.1); }
+  .cap-row-key { opacity: 0.7; }
+  .cap-row-val { font-weight: bold; }
+  .cap-box-after .cap-row-val { color: var(--gold); }
+ 
+  /* SLIDE 8 */
+  .growth-row { display: flex; align-items: center; justify-content: center; gap: 0; margin: 16px 0 14px; }
+  .growth-node { text-align: center; padding: 0 10px; }
+  .growth-bubble { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 86px; height: 86px; border-radius: 50%; font-weight: bold; margin: 0 auto 6px; }
+  .bubble-today { background: var(--accent); color: var(--white); }
+  .bubble-next { background: var(--green); color: var(--white); }
+  .bubble-thresh { background: var(--orange); color: var(--white); }
+  .bubble-new { background: var(--navy); color: var(--white); border: 3px solid var(--gold); }
+  .bubble-num { font-size: 20px; line-height: 1; }
+  .bubble-unit { font-size: 10px; opacity: 0.85; }
+  .growth-label { font-size: 12px; color: var(--gray); }
+  .growth-arrow { font-size: 26px; color: var(--gray); margin-bottom: 20px; }
+  .growth-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .gstat { background: var(--white); border-radius: 10px; padding: 14px; box-shadow: 0 2px 8px rgba(30,39,97,0.06); }
+  .gstat-val { font-size: 18px; font-weight: bold; color: var(--navy); line-height: 1.1; }
+  .gstat-label { font-size: 11px; color: var(--gray); margin-top: 4px; line-height: 1.3; }
+ 
+  /* SLIDE 10 */
+  .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
+  .rec-card { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 16px 18px; border: 1px solid rgba(202,220,252,0.12); display: flex; gap: 12px; align-items: flex-start; }
+  .rec-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; flex-shrink: 0; margin-top: 2px; }
+  .badge-critical { background: var(--red); color: var(--white); }
+  .badge-high { background: var(--orange); color: var(--white); }
+  .badge-medium { background: var(--gold); color: var(--navy); }
+  .badge-low { background: var(--green); color: var(--white); }
+  .rec-text { font-size: 13px; color: var(--ice); line-height: 1.55; opacity: 0.9; }
+ 
+  /* SLIDE 11 – LEVERANDØRRESKONTRO */
+  .lev-layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; flex: 1; min-height: 0; }
+  .lev-table-wrap { overflow-y: auto; }
+  .lev-chart-col { display: flex; flex-direction: column; gap: 14px; }
+  .lev-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .cat-list { display: flex; flex-direction: column; gap: 6px; }
+  .cat-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .cat-bar-wrap { flex: 1; height: 8px; background: rgba(30,39,97,0.1); border-radius: 4px; }
+  .cat-bar { height: 8px; border-radius: 4px; }
+  .cat-name { min-width: 130px; font-size: 12px; color: var(--text); }
+  .cat-val { min-width: 70px; text-align: right; font-weight: 600; color: var(--navy); font-size: 12px; }
+  .lev-chart-wrap { position: relative; height: 180px; }
+ 
+  /* SLIDE 11 – SALGSPIPELINE */
+  .pipe-funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .pipe-stage { border-radius: 10px; padding: 13px 14px; text-align: center; border-left: 4px solid; }
+  .stage-int { background: rgba(74,144,226,0.08); border-color: var(--accent); }
+  .stage-tils { background: rgba(245,166,35,0.1); border-color: var(--gold); }
+  .stage-forh { background: rgba(230,126,34,0.1); border-color: var(--orange); }
+  .stage-vunn { background: rgba(39,174,96,0.1); border-color: var(--green); }
+  .stage-label { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; color: var(--gray); margin-bottom: 4px; }
+  .stage-val { font-size: 20px; font-weight: bold; color: var(--navy); line-height: 1; }
+  .stage-count { font-size: 11px; color: var(--gray); margin-top: 3px; }
+  .pipe-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; min-height: 0; overflow: hidden; }
+  .pipe-col { display: flex; flex-direction: column; overflow: hidden; }
+  .pipe-col-title { font-size: 12px; font-weight: bold; color: var(--navy); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .pipe-table-wrap { overflow-y: auto; flex: 1; }
+  .stage-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+  .sb-tils { background: rgba(245,166,35,0.15); color: #B07800; }
+  .sb-forh { background: rgba(230,126,34,0.15); color: #B05A00; }
+  .sb-int  { background: rgba(74,144,226,0.15); color: #1A5EA8; }
+  .big-prospect { background: rgba(39,174,96,0.08); border: 1px solid rgba(39,174,96,0.25); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
+  .big-prospect-val { font-size: 22px; font-weight: bold; color: var(--green); }
+  .big-prospect-label { font-size: 12px; color: var(--gray); margin-top: 2px; }
+</style>
+</head>
+<body>
+ 
+<div class="slides-wrapper">
+ 
+  <!-- SLIDE 1 -->
+  <div class="slide active" id="slide-1">
+    <div class="title-company">We4you AS</div>
+    <div class="title-main">Sentralbordet</div>
+    <div class="title-sub">Lønnsomhet og kapasitetsanalyse</div>
+    <div class="title-period">JANUAR – MAI 2026</div>
+    <div class="title-kpis">
+      <div class="title-kpi">
+        <div class="title-kpi-val">1 439 844</div>
+        <div class="title-kpi-label">NOK inntekt totalt</div>
+      </div>
+      <div class="title-kpi">
+        <div class="title-kpi-val">82,1 %</div>
+        <div class="title-kpi-label">Servicenivå 20 sek</div>
+      </div>
+      <div class="title-kpi">
+        <div class="title-kpi-val">789 169</div>
+        <div class="title-kpi-label">NOK EBITDA totalt</div>
+      </div>
+      <div class="title-kpi">
+        <div class="title-kpi-val">~35</div>
+        <div class="title-kpi-label">Nye kunder vi kan ta inn</div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 2 -->
+  <div class="slide slide-light" id="slide-2">
+    <div class="slide-header"><div class="slide-title">Sammendrag – Nøkkeltall Jan–Mai 2026</div></div>
+    <div class="slide-body">
+      <div class="kpi-grid kpi-grid-4" style="margin-bottom:12px;">
+        <div class="kpi-card">
+          <div class="kpi-val">35 943</div>
+          <div class="kpi-label">Samtaler besvart (justert)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">96,2 %</div>
+          <div class="kpi-label">Besvaringsgrad (justert)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" style="color:#E67E22;">82,1 %</div>
+          <div class="kpi-label">Servicenivå 20 sek (mål: 95 %)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" style="color:#E74C3C;">98,2 %</div>
+          <div class="kpi-label">Kapasitetsutnyttelse (uten Leticia)</div>
+        </div>
+      </div>
+      <div class="kpi-grid kpi-grid-4">
+        <div class="kpi-card">
+          <div class="kpi-val">1 439 844</div>
+          <div class="kpi-label">NOK totale inntekter (ekskl. MVA)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">789 169</div>
+          <div class="kpi-label">NOK EBITDA 5 måneder</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">54,8 %</div>
+          <div class="kpi-label">Gjennomsnittlig EBITDA-margin</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" style="color:#27AE60;">~35</div>
+          <div class="kpi-label">Nye kunder – ledig kapasitet med Leticia</div>
+        </div>
+      </div>
+      <div class="note-box">
+        Kapasitet nær full uten Leticia (98,2 %). Fra juni 2026 øker kapasiteten med 45 % — rom for ~35 nye kunder.
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 3 -->
+  <div class="slide slide-light" id="slide-3">
+    <div class="slide-header"><div class="slide-title">Bemanningsteam – Sentralbordet</div></div>
+    <div class="slide-body">
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="team-name">Michelle Siera</div>
+          <span class="team-pct pct-60">60 %</span>
+          <div class="team-salary">26 100 NOK</div>
+          <div class="team-role">60 % fast, variabelt timeantall</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Tone Høibråten</div>
+          <span class="team-pct">100 %</span>
+          <div class="team-salary">43 000 NOK</div>
+          <div class="team-role">Fulltid</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Leticia Haugen</div>
+          <span class="team-pct">100 %</span>
+          <div class="team-salary">43 000 NOK</div>
+          <div class="team-role">Startet 1. juni 2026 ✓</div>
+          <div style="position:absolute;top:12px;right:12px;background:#27AE60;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:bold;">NY</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Marion Bakken</div>
+          <span class="team-pct pct-60">60 %</span>
+          <div class="team-salary">26 100 NOK</div>
+          <div class="team-role">60 % fast</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Isabell Ibanez</div>
+          <span class="team-pct pct-vakt">Vakt</span>
+          <div class="team-salary">4 000 NOK</div>
+          <div class="team-role">Vakt 07–08 / 16–17 (annenhver uke)</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Geir Bodin</div>
+          <span class="team-pct pct-vakt">Vakt</span>
+          <div class="team-salary">4 000 NOK</div>
+          <div class="team-role">Vakt 07–08 / 16–17 (annenhver uke)</div>
+        </div>
+      </div>
+      <div class="note-box">
+        Arbeidstid: 08:00–16:00, mandag–fredag &nbsp;|&nbsp; Vaktdekning: 07–08 og 16–17 (Geir og Isabell veksler ukentlig)
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 4 -->
+  <div class="slide slide-light" id="slide-4">
+    <div class="slide-header"><div class="slide-title">Månedlige inntekter fra sentralbordkunder</div></div>
+    <div class="slide-body">
+      <div class="chart-table-row">
+        <div class="chart-wrap">
+          <canvas id="revenueChart"></canvas>
+        </div>
+        <div>
+          <table class="data-table">
+            <thead>
+              <tr><th>Måned</th><th>Inntekt</th><th>EBITDA</th><th>Margin</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Januar</td><td>384 813 NOK</td><td>254 678 NOK</td><td>66,2 %</td></tr>
+              <tr><td>Februar</td><td>217 071 NOK</td><td>86 936 NOK</td><td>40,0 %</td></tr>
+              <tr><td>Mars</td><td>302 464 NOK</td><td>172 329 NOK</td><td>57,0 %</td></tr>
+              <tr><td>April</td><td>326 173 NOK</td><td>196 038 NOK</td><td>60,1 %</td></tr>
+              <tr><td>Mai</td><td>209 324 NOK</td><td>79 189 NOK</td><td>37,8 %</td></tr>
+              <tr style="background:#EAF0FF;"><td><strong>Totalt</strong></td><td><strong>1 439 844 NOK</strong></td><td><strong>789 169 NOK</strong></td><td><strong>54,8 %</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="note-box">
+        Feb og Mai er lave fordi Compass Group og Krøderen Elektro ikke fakturerte disse månedene (varierende faktureringssyklus).
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 5 -->
+  <div class="slide slide-light" id="slide-5">
+    <div class="slide-header"><div class="slide-title">Lønnsomhet (EBITDA) Jan–Mai 2026</div></div>
+    <div class="slide-body">
+      <div class="profit-layout">
+        <div class="profit-left">
+          <div class="profit-kpi">
+            <div class="profit-kpi-val">1 439 844 NOK</div>
+            <div class="profit-kpi-label">Total inntekt 5 måneder</div>
+          </div>
+          <div class="profit-kpi">
+            <div class="profit-kpi-val" style="color:#E74C3C;">650 675 NOK</div>
+            <div class="profit-kpi-label">Lønnskostnader 5 måneder</div>
+          </div>
+          <div class="profit-kpi" style="background:#EAF6EF;border:1.5px solid #27AE60;">
+            <div class="profit-kpi-val" style="color:#27AE60;">789 169 NOK</div>
+            <div class="profit-kpi-label">EBITDA 5 mnd totalt</div>
+          </div>
+          <div class="profit-kpi">
+            <div class="profit-kpi-val">54,8 %</div>
+            <div class="profit-kpi-label">Gjennomsnittlig EBITDA-margin</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="profit-kpi"><div><div class="profit-kpi-val" style="font-size:20px;color:#27AE60;">66,2 %</div><div class="profit-kpi-label">Beste mnd (Jan)</div></div></div>
+            <div class="profit-kpi"><div><div class="profit-kpi-val" style="font-size:20px;color:#E74C3C;">37,8 %</div><div class="profit-kpi-label">Svakeste mnd (Mai)</div></div></div>
+          </div>
+        </div>
+        <div class="profit-right">
+          <div class="month-row month-row-head">
+            <div>Måned</div><div>Inntekt</div><div>EBITDA</div><div>Margin</div>
+          </div>
+          <div class="month-row">
+            <div class="month-name">Januar</div>
+            <div><div style="font-size:12px;color:#555;">384 813</div><div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:100%;background:#4A90E2;"></div></div></div></div>
+            <div class="month-ebitda">254 678</div>
+            <div><span class="month-margin margin-hi">66,2 %</span></div>
+          </div>
+          <div class="month-row">
+            <div class="month-name">Februar</div>
+            <div><div style="font-size:12px;color:#555;">217 071</div><div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:56%;background:#4A90E2;"></div></div></div></div>
+            <div class="month-ebitda">86 936</div>
+            <div><span class="month-margin margin-lo">40,0 %</span></div>
+          </div>
+          <div class="month-row">
+            <div class="month-name">Mars</div>
+            <div><div style="font-size:12px;color:#555;">302 464</div><div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:79%;background:#4A90E2;"></div></div></div></div>
+            <div class="month-ebitda">172 329</div>
+            <div><span class="month-margin margin-mid">57,0 %</span></div>
+          </div>
+          <div class="month-row">
+            <div class="month-name">April</div>
+            <div><div style="font-size:12px;color:#555;">326 173</div><div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:85%;background:#4A90E2;"></div></div></div></div>
+            <div class="month-ebitda">196 038</div>
+            <div><span class="month-margin margin-hi">60,1 %</span></div>
+          </div>
+          <div class="month-row">
+            <div class="month-name">Mai</div>
+            <div><div style="font-size:12px;color:#555;">209 324</div><div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:54%;background:#4A90E2;"></div></div></div></div>
+            <div class="month-ebitda">79 189</div>
+            <div><span class="month-margin margin-lo">37,8 %</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note-box">
+        Lønnskostnader: 130 135 NOK/mnd (uten Leticia). Med Leticia fra juni: 184 358 NOK/mnd.
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 6 -->
+  <div class="slide slide-light" id="slide-6">
+    <div class="slide-header"><div class="slide-title">Servicenivå – Gap til målet er operasjonelt, ikke kapasitetsmessig</div></div>
+    <div class="slide-body">
+      <div class="sl-grid">
+        <div class="sl-stats">
+          <div class="kpi-card" style="background:#FFF3CD;border:1.5px solid #F5A623;">
+            <div class="kpi-val" style="color:#E67E22;font-size:42px;">82,1 %</div>
+            <div class="kpi-label" style="font-size:14px;">Servicenivå oppnådd</div>
+            <div class="kpi-note">Justert for frivillige avbrudd</div>
+          </div>
+          <div class="kpi-card" style="background:#EAF6EF;border:1.5px solid #27AE60;">
+            <div class="kpi-val" style="color:#27AE60;font-size:34px;">95,0 %</div>
+            <div class="kpi-label">SLA-mål (95 % innen 20 sekunder)</div>
+          </div>
+          <div class="kpi-card" style="background:#FDECEA;border:1.5px solid #E74C3C;">
+            <div class="kpi-val" style="color:#E74C3C;font-size:34px;">−12,9 pp</div>
+            <div class="kpi-label">Gap til mål</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-val" style="color:#27AE60;">96,2 %</div>
+            <div class="kpi-label">Besvaringsgrad</div>
+          </div>
+        </div>
+        <div class="sl-issues">
+          <div style="font-size:12px;font-weight:bold;color:#8899AA;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Hva er problemet?</div>
+          <div class="issue-item"><div class="issue-icon">❌</div><div>IKKE kapasitetsmangel – kapasitetsutnyttelsen var 98,2 % uten Leticia; svakt over normalt men ikke full.</div></div>
+          <div class="issue-item"><div class="issue-icon">⚠️</div><div>PEAK-TIME problem – de travleste periodene overstiger øyeblikkelig kapasitet.</div></div>
+          <div class="issue-item"><div class="issue-icon">📞</div><div>Responstid: samtaler som ringer lenge uten å bli besvart innen 20 sek, selv om de besvares til slutt.</div></div>
+          <div class="issue-item" style="background:#EAF6EF;border:1px solid rgba(39,174,96,0.3);"><div class="issue-icon">✅</div><div>Fra juni 2026: Leticia øker kapasiteten med <strong>45 %</strong> → forventes å lukke SLA-gapet.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 7 -->
+  <div class="slide slide-light" id="slide-7">
+    <div class="slide-header"><div class="slide-title">Kapasitetsanalyse – Med og uten Leticia</div></div>
+    <div class="slide-body">
+      <div class="cap-grid">
+        <div class="cap-box cap-box-before">
+          <div class="cap-label">Jan–Mai 2026 (uten Leticia)</div>
+          <div class="cap-row"><span class="cap-row-key">Agenter</span><span class="cap-row-val">2,2 ÅV</span></div>
+          <div class="cap-row"><span class="cap-row-key">Kapasitet/mnd</span><span class="cap-row-val">7 260 samtaler</span></div>
+          <div class="cap-row"><span class="cap-row-key">Kapasitetsutnyttelse</span><span class="cap-row-val" style="color:#E74C3C;">98,2 %</span></div>
+          <div class="cap-row"><span class="cap-row-key">Ledig kapasitet</span><span class="cap-row-val">~71 samtaler/mnd</span></div>
+          <div class="cap-row" style="border:none;"><span class="cap-row-key">Rom for ny kunde</span><span class="cap-row-val">~1 ny kunde</span></div>
+        </div>
+        <div class="cap-box cap-box-after">
+          <div class="cap-label">Fra juni 2026 (med Leticia)</div>
+          <div class="cap-row"><span class="cap-row-key">Agenter</span><span class="cap-row-val">3,2 ÅV</span></div>
+          <div class="cap-row"><span class="cap-row-key">Kapasitet/mnd</span><span class="cap-row-val">10 560 samtaler</span></div>
+          <div class="cap-row"><span class="cap-row-key">Kapasitetsutnyttelse</span><span class="cap-row-val" style="color:#27AE60;">68,1 %</span></div>
+          <div class="cap-row"><span class="cap-row-key">Ledig kapasitet</span><span class="cap-row-val">~3 371 samtaler/mnd</span></div>
+          <div class="cap-row" style="border:none;"><span class="cap-row-key">Rom for ny kunde</span><span class="cap-row-val" style="color:var(--gold);font-size:20px;">~35 nye kunder</span></div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:16px;">
+        Kapasitetsnorm: 150 samtaler/agent/dag × 22 arbeidsdager/mnd = 3 300 samtaler/ÅV/mnd
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 8 -->
+  <div class="slide slide-light" id="slide-8">
+    <div class="slide-header"><div class="slide-title">Når trenger vi en ny ansatt?</div></div>
+    <div class="slide-body">
+      <div class="growth-row">
+        <div class="growth-node">
+          <div class="growth-bubble bubble-today"><div class="bubble-num">74</div><div class="bubble-unit">kunder</div></div>
+          <div class="growth-label">I dag</div>
+        </div>
+        <div class="growth-arrow">→</div>
+        <div class="growth-node">
+          <div class="growth-bubble bubble-next"><div class="bubble-num">~90</div><div class="bubble-unit">kunder</div></div>
+          <div class="growth-label">+16 kunder</div>
+        </div>
+        <div class="growth-arrow">→</div>
+        <div class="growth-node">
+          <div class="growth-bubble bubble-thresh"><div class="bubble-num">~109</div><div class="bubble-unit">kunder</div></div>
+          <div class="growth-label">TERSKEL</div>
+        </div>
+        <div class="growth-arrow">→</div>
+        <div class="growth-node">
+          <div class="growth-bubble bubble-new"><div class="bubble-num">+1</div><div class="bubble-unit">agent</div></div>
+          <div class="growth-label">Ny kapasitet</div>
+        </div>
+      </div>
+      <div class="growth-stats">
+        <div class="gstat"><div class="gstat-val">~97</div><div class="gstat-label">Samtaler per ny kunde per mnd (snitt)</div></div>
+        <div class="gstat"><div class="gstat-val">~3 371</div><div class="gstat-label">Ledig kapasitet/mnd med Leticia</div></div>
+        <div class="gstat"><div class="gstat-val">~55 000 NOK</div><div class="gstat-label">Kostnad ny heltidsagent/mnd (inkl. AGA+fp)</div></div>
+        <div class="gstat"><div class="gstat-val">~14 kunder</div><div class="gstat-label">Ny agent lønnsom etter (55k / 3900)</div></div>
+      </div>
+      <div class="note-box" style="margin-top:12px;">
+        <strong>Estimert inntekt ved terskel (~109 kunder):</strong> ~424 900 NOK/mnd &nbsp;|&nbsp; 74 eksisterende + 35 nye kunder
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 9 -->
+  <div class="slide slide-light" id="slide-9">
+    <div class="slide-header"><div class="slide-title">Kundeprofil – Topp sentralbordkunder Jan–Mai 2026</div></div>
+    <div class="slide-body" style="padding-top:16px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Kunde</th>
+            <th>Januar</th>
+            <th>Februar</th>
+            <th>Mars</th>
+            <th>April</th>
+            <th>Mai</th>
+            <th>Totalt 5 mnd</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Compass Group Norge AS</td><td>120 030</td><td>0</td><td>46 550</td><td>49 238</td><td>0</td><td>215 818</td></tr>
+          <tr><td>Allskog SA</td><td>13 225</td><td>8 230</td><td>18 750</td><td>18 750</td><td>18 750</td><td>77 705</td></tr>
+          <tr><td>Krøderen Elektro AS</td><td>30 175</td><td>0</td><td>21 850</td><td>17 538</td><td>0</td><td>69 563</td></tr>
+          <tr><td>Philips Norge AS</td><td>10 138</td><td>10 138</td><td>19 513</td><td>13 263</td><td>13 263</td><td>66 313</td></tr>
+          <tr><td>Dekkteam Ringdekk AS</td><td>6 600</td><td>3 214</td><td>10 901</td><td>28 901</td><td>0</td><td>49 616</td></tr>
+          <tr><td>Promon AS</td><td>9 263</td><td>9 263</td><td>9 263</td><td>9 263</td><td>9 263</td><td>46 313</td></tr>
+          <tr><td>Foma Norge AS</td><td>8 786</td><td>6 086</td><td>8 786</td><td>10 149</td><td>7 449</td><td>41 256</td></tr>
+          <tr><td>Rambøll Norge AS</td><td>5 840</td><td>5 840</td><td>14 129</td><td>7 669</td><td>7 165</td><td>40 643</td></tr>
+          <tr><td>Norsk Yrkesdykkerskole AS</td><td>12 788</td><td>12 788</td><td>0</td><td>0</td><td>12 788</td><td>38 363</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 10 -->
+  <div class="slide slide-dark" id="slide-10">
+    <div class="slide-header"><div class="slide-title">Anbefalinger til ledelse og styre</div></div>
+    <div class="slide-body">
+      <div class="rec-grid">
+        <div class="rec-card">
+          <span class="rec-badge badge-critical">KRITISK</span>
+          <div class="rec-text">Servicenivå-gap: Analyser timevise data for peak-perioder. Vurder skiftjustering eller callback. Leticia fra juni bør forbedre situasjonen betydelig.</div>
+        </div>
+        <div class="rec-card">
+          <span class="rec-badge badge-high">HØY</span>
+          <div class="rec-text">Bruk ledig kapasitet (35 nye kunder) aktivt i salgsprosessen. Prioriter AS/SA-bedrifter med høyt samtalevolum.</div>
+        </div>
+        <div class="rec-card">
+          <span class="rec-badge badge-high">HØY</span>
+          <div class="rec-text">Avklar faktureringssyklus med Compass Group og Krøderen Elektro. Vurder månedlig fast fakturering for forutsigbar cashflow.</div>
+        </div>
+        <div class="rec-card">
+          <span class="rec-badge badge-medium">MIDDELS</span>
+          <div class="rec-text">EBITDA-margin varierer fra 38–66 %. Sikre minimumspriser i alle kontrakter. Gjennomsnitt 54,8 % er godt – men beskytt bunnen.</div>
+        </div>
+        <div class="rec-card" style="grid-column:1/-1;">
+          <span class="rec-badge badge-low">LAV</span>
+          <div class="rec-text">Ny ansettelse er <strong>IKKE nødvendig nå</strong>. Terskel: ~109 kunder (35 nye). Revurder når samtalevolum nærmer seg 10 560 samtaler/mnd.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 11 – SALGSPIPELINE -->
+  <div class="slide slide-light" id="slide-11">
+    <div class="slide-header"><div class="slide-title">Salgspipeline – Vekstmuligheter (Pipeline Geir)</div></div>
+    <div class="slide-body" style="padding-top:14px;">
+      <!-- Stage funnel -->
+      <div class="pipe-funnel">
+        <div class="pipe-stage stage-int">
+          <div class="stage-label">Interessert</div>
+          <div class="stage-val">40 650 kr</div>
+          <div class="stage-count">10 prospekter</div>
+        </div>
+        <div class="pipe-stage stage-tils">
+          <div class="stage-label">Tilbud sendt</div>
+          <div class="stage-val">39 900 kr</div>
+          <div class="stage-count">7 prospekter</div>
+        </div>
+        <div class="pipe-stage stage-forh">
+          <div class="stage-label">Forhandling</div>
+          <div class="stage-val">16 900 kr</div>
+          <div class="stage-count">4 prospekter</div>
+        </div>
+        <div class="pipe-stage stage-vunn">
+          <div class="stage-label">Vunnet (siste runde)</div>
+          <div class="stage-val">48 280 kr</div>
+          <div class="stage-count">9 avtaler</div>
+        </div>
+      </div>
+      <!-- Two-column layout -->
+      <div class="pipe-layout">
+        <!-- Left: Hot deals -->
+        <div class="pipe-col">
+          <div class="pipe-col-title">🔥 Varme prospekter – Tilbud + Forhandling</div>
+          <div class="pipe-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Selskap</th>
+                  <th style="text-align:center;">Stage</th>
+                  <th>MRR/mnd</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Innlandet Maskinutleie AS</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>11 000 kr</td></tr>
+                <tr><td>Sensio AS</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>8 000 kr</td></tr>
+                <tr><td>Ower Trafikkskole</td><td style="text-align:center;"><span class="stage-badge sb-forh">Forhandling</span></td><td>7 000 kr</td></tr>
+                <tr><td>Sørum Dekksenter AS</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>6 900 kr</td></tr>
+                <tr><td>Autosenteret (Kundesenter 24/7)</td><td style="text-align:center;"><span class="stage-badge sb-forh">Forhandling</span></td><td>6 900 kr</td></tr>
+                <tr><td>Veng Norge AS – Sentralbord</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>6 250 kr</td></tr>
+                <tr><td>Veng Norge AS – Overflow</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>6 250 kr</td></tr>
+                <tr><td>Dekk og deler AS</td><td style="text-align:center;"><span class="stage-badge sb-forh">Forhandling</span></td><td>1 500 kr</td></tr>
+                <tr><td>Auto Vest</td><td style="text-align:center;"><span class="stage-badge sb-forh">Forhandling</span></td><td>1 500 kr</td></tr>
+                <tr><td>The Dreams fb</td><td style="text-align:center;"><span class="stage-badge sb-tils">Tilbud sendt</span></td><td>1 500 kr</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Right: Interessert + highlight -->
+        <div class="pipe-col">
+          <div class="pipe-col-title">📋 Interessert – Neste bølge</div>
+          <div class="pipe-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Selskap</th>
+                  <th>MRR/mnd</th>
+                  <th>Closing</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:rgba(39,174,96,0.06);"><td><strong>Asplan Viak</strong></td><td><strong>15 000 kr</strong></td><td>Aug 31</td></tr>
+                <tr><td>Ringen Bilverksted</td><td>6 900 kr</td><td>Jun 30</td></tr>
+                <tr><td>Kransen Tannlegesenter</td><td>6 250 kr</td><td>Jun 30</td></tr>
+                <tr><td>kundeservice Audun Aspjell</td><td>5 000 kr</td><td>Aug 31</td></tr>
+                <tr><td>DVS Entreprenør AS</td><td>1 500 kr</td><td>Aug 30</td></tr>
+                <tr><td>Avfallsekk AS</td><td>1 500 kr</td><td>Sep 01</td></tr>
+                <tr><td>Alex Autoservice</td><td>1 500 kr</td><td>Jun 30</td></tr>
+                <tr><td>Redflight Aviation</td><td>1 500 kr</td><td>Aug 05</td></tr>
+                <tr><td>Borre Bilpleie</td><td>1 500 kr</td><td>Mai 31</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="big-prospect" style="margin-top:10px;">
+            <div class="big-prospect-label">🌟 Største enkeltprospekt (Interessert – 24. jun)</div>
+            <div class="big-prospect-val">Asplan Viak – 15 000 kr/mnd</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:3px;">Sentralbordtjeneste for stor ingeniørbedrift. Tilbud pågår.</div>
+          </div>
+          <div class="note-box" style="margin-top:8px;">
+            <strong>Total varm pipeline (Tilbud+Forhandling):</strong> 56 800 kr/mnd MRR &nbsp;|&nbsp; Tapt hittil: 30 deals / 97 400 kr
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SLIDE 12 – LEVERANDØRRESKONTRO -->
+  <div class="slide slide-light" id="slide-12">
+    <div class="slide-header"><div class="slide-title">Leverandørreskontro – Kostnader Jan–Mai 2026</div></div>
+    <div class="slide-body" style="padding-top:14px;">
+      <!-- KPI row -->
+      <div class="lev-kpi-row">
+        <div class="kpi-card" style="background:var(--white);box-shadow:0 2px 12px rgba(30,39,97,0.08);border-radius:12px;padding:14px;text-align:center;">
+          <div class="kpi-val" style="font-size:26px;">941 253 kr</div>
+          <div class="kpi-label">Totale leverandørkostnader Jan–Mai</div>
+        </div>
+        <div class="kpi-card" style="background:var(--white);box-shadow:0 2px 12px rgba(30,39,97,0.08);border-radius:12px;padding:14px;text-align:center;">
+          <div class="kpi-val" style="font-size:26px;">188 251 kr</div>
+          <div class="kpi-label">Snitt per måned</div>
+        </div>
+        <div class="kpi-card" style="background:var(--white);box-shadow:0 2px 12px rgba(30,39,97,0.08);border-radius:12px;padding:14px;text-align:center;">
+          <div class="kpi-val" style="font-size:26px;">400 430 kr</div>
+          <div class="kpi-label">Største leverandør (Bookingkoden AS – 42,5 %)</div>
+        </div>
+      </div>
+      <!-- Two-col layout -->
+      <div class="lev-layout" style="margin-top:12px;">
+        <!-- Left: supplier table -->
+        <div class="lev-table-wrap">
+          <table class="data-table" style="font-size:12px;">
+            <thead>
+              <tr>
+                <th>Leverandør</th>
+                <th style="text-align:center;">Kategori</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bookingkoden AS *</td><td style="text-align:center;font-size:10px;color:var(--gray);">Konsulent/drift</td><td>400 430 kr</td></tr>
+              <tr><td>Zisson AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Sentralbordplattform</td><td>123 946 kr</td></tr>
+              <tr><td>Østre Aker vei 17 ANS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Husleie</td><td>122 338 kr</td></tr>
+              <tr><td>Telenor Norge AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Telecom</td><td>96 162 kr</td></tr>
+              <tr><td>Safe4 Certified Monitoring</td><td style="text-align:center;font-size:10px;color:var(--gray);">Overvåking</td><td>33 810 kr</td></tr>
+              <tr><td>Telenor Infra AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Infrastruktur</td><td>29 355 kr</td></tr>
+              <tr><td>ALAITNER MARKETING</td><td style="text-align:center;font-size:10px;color:var(--gray);">Markedsføring</td><td>22 475 kr</td></tr>
+              <tr><td>Tripletex AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Regnskapssystem</td><td>12 311 kr</td></tr>
+              <tr><td>Sissel Albertsen Consulting</td><td style="text-align:center;font-size:10px;color:var(--gray);">Konsulent</td><td>11 875 kr</td></tr>
+              <tr><td>Komplett Services AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Diverse</td><td>11 817 kr</td></tr>
+              <tr><td>DIN CONTROLLER AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Controller</td><td>10 000 kr</td></tr>
+              <tr><td>SpareBank 1 Forsikring AS</td><td style="text-align:center;font-size:10px;color:var(--gray);">Forsikring</td><td>8 738 kr</td></tr>
+              <tr style="background:rgba(30,39,97,0.04);"><td colspan="2"><em>Øvrige ~15 leverandører</em></td><td>58 026 kr</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:10px;color:var(--gray);margin-top:6px;">* Bookingkoden AS er nærstående selskap (Geir Bodin). Inkl. lønn sentralbordledelse og driftskostnader.</div>
+        </div>
+        <!-- Right: category chart -->
+        <div class="lev-chart-col">
+          <div style="font-size:12px;font-weight:bold;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Kostnader etter kategori</div>
+          <div class="cat-list">
+            <div class="cat-row">
+              <div class="cat-name">Konsulenter/drift</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:100%;background:var(--navy);"></div></div>
+              <div class="cat-val">422 305 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Telecom/plattform</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:62.6%;background:var(--accent);"></div></div>
+              <div class="cat-val">264 478 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Husleie/lokaler</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:29.0%;background:var(--orange);"></div></div>
+              <div class="cat-val">122 338 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Overvåking</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:8.0%;background:var(--red);"></div></div>
+              <div class="cat-val">33 810 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Diverse/andre</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:8.5%;background:var(--gray);"></div></div>
+              <div class="cat-val">36 057 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Markedsføring</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:5.3%;background:var(--gold);"></div></div>
+              <div class="cat-val">22 475 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Software/SaaS/IT</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:6.5%;background:var(--ice);"></div></div>
+              <div class="cat-val">27 281 kr</div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-name">Forsikring</div>
+              <div class="cat-bar-wrap"><div class="cat-bar" style="width:3.0%;background:var(--green);"></div></div>
+              <div class="cat-val">12 508 kr</div>
+            </div>
+          </div>
+          <div class="note-box" style="margin-top:14px;">
+            <strong>Månedstotaler:</strong> Jan 173k · Feb 224k · Mar 169k · Apr 213k · Mai 162k<br>
+            Kilde: Tripletex leverandørfakturaer (alle kategorier inkludert)
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--gray);background:var(--ice-soft);border-radius:8px;padding:10px 12px;">
+            <strong style="color:var(--navy);">Merk:</strong> Bookingkoden AS (42,5 %) dekker sentralbordledelse og driftskostnader. Uten denne er øvrige leverandørkostnader ~540k for perioden (108k/mnd).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</div>
+ 
+<!-- NAV -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>← Forrige</button>
+  <div class="slide-dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 12</span>
+  <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Neste →</button>
+</div>
+ 
+<script>
+  const TOTAL = 12;
+  let current = 1;
+ 
+  const dotsEl = document.getElementById('dots');
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+ 
+  function goTo(n) {
+    document.getElementById('slide-' + current).classList.remove('active');
+    dotsEl.children[current - 1].classList.remove('active');
+    current = Math.max(1, Math.min(TOTAL, n));
+    document.getElementById('slide-' + current).classList.add('active');
+    dotsEl.children[current - 1].classList.add('active');
+    document.getElementById('counter').textContent = current + ' / ' + TOTAL;
+    document.getElementById('prevBtn').disabled = current === 1;
+    document.getElementById('nextBtn').disabled = current === TOTAL;
+    if (current === 4) renderChart();
+  }
+ 
+  function changeSlide(dir) { goTo(current + dir); }
+ 
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+  });
+ 
+  let chartRendered = false;
+  function renderChart() {
+    if (chartRendered) return;
+    chartRendered = true;
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Januar', 'Februar', 'Mars', 'April', 'Mai'],
+        datasets: [
+          {
+            label: 'Inntekter (NOK)',
+            data: [384813, 217071, 302464, 326173, 209324],
+            backgroundColor: 'rgba(30,39,97,0.8)',
+            borderRadius: 6
+          },
+          {
+            label: 'EBITDA (NOK)',
+            data: [254678, 86936, 172329, 196038, 79189],
+            backgroundColor: 'rgba(39,174,96,0.75)',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12, family: 'Calibri, Arial' } } },
+          tooltip: {
+            callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toLocaleString('nb-NO') + ' NOK' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: v => (v/1000).toFixed(0) + 'k', font: { size: 11 } },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
+ 
