@@ -29,26 +29,28 @@ function Index() {
         }}
       >
         <h2 style={{ color: "#F5A623", fontSize: 18, margin: "0 0 12px" }}>
-          Merknad om kostnadsfordelingen per avdeling
+          Merknad om leverandørkostnadene (slide 12)
         </h2>
         <p style={{ maxWidth: 780, lineHeight: 1.6, margin: "0 0 12px" }}>
-          En gjennomgang i Tripletex (30. august 2026) viser at kostnadsbildet per
-          avdeling ovenfor kan være skjevt: av 151 leverandørfakturaer bokført hittil i
-          2026 mangler <strong>118 (ca. 78 %)</strong> avdelingstagg helt. Dermed er ikke
-          alle kostnader korrekt fordelt mellom sentralbordets avdelinger i tallene
-          over.
+          Tripletex sine gamle avdelingskoder ga et skjevt/ufullstendig bilde av
+          kostnadene (de fleste leverandørfakturaer manglet avdelingstagg helt). Slide 12
+          er derfor bygget om 30. august 2026: kostnadene er forenklet til kun{" "}
+          <strong>Sentralbordet</strong> og <strong>VPN</strong>, beregnet direkte fra
+          Tripletex sine 139 leverandørfakturaer for januar–juli 2026 etter regelen
+          Telenor eller konto 4300 (varekjøp) → VPN, øvrige → Sentralbordet. Full
+          fakturaliste med denne klassifiseringen ligger i et eget regneark.
         </p>
-        <p style={{ maxWidth: 780, lineHeight: 1.6, margin: "0 0 12px" }}>
-          Foreslått fordelingsregel for opprydding: fakturaer fra Telenor, samt
-          fakturaer med kostnadslinje på konto 4300 (innkjøp varer), tagges{" "}
-          <strong>04 VPN</strong> — øvrige leverandørfakturaer tagges{" "}
-          <strong>03 Svartjeneste</strong>. Med denne regelen fordeler de 151
-          fakturaene seg som 17 → 04 VPN og 134 → 03 Svartjeneste.
+        <p style={{ maxWidth: 780, lineHeight: 1.6, margin: "0 0 12px", opacity: 0.85 }}>
+          Isabel (DIN CONTROLLER AS) bokfører med disse to avdelingene fra og med
+          august 2026 — historiske fakturaer rettes ikke manuelt, så tallene over er en
+          beregnet (ikke bokført) fordeling frem til bokføringen tar igjen seg selv.
+          Skillen som bygger denne oversikten kjører automatisk den 20. hver måned og
+          tar da med neste måneds fakturaer (august legges til ved neste kjøring).
         </p>
-        <p style={{ maxWidth: 780, lineHeight: 1.6, margin: 0, opacity: 0.85 }}>
-          Selve taggingen må gjøres manuelt i Tripletex og er ikke utført ennå
-          (avklares med regnskapsfører). Tallene i presentasjonen over bør derfor leses
-          med dette forbeholdet inntil retting er gjennomført.
+        <p style={{ maxWidth: 780, lineHeight: 1.6, margin: 0, opacity: 0.7, fontSize: 13 }}>
+          NB: kun slide 12 (leverandørkostnader) er oppdatert til jan–jul 2026. De øvrige
+          slidene (inntekt, EBITDA, kapasitet, kunder) viser fortsatt jan–mai 2026 og
+          krever egen oppdatering med ferske tall fra salg/samtalestatistikk.
         </p>
       </div>
     </div>
