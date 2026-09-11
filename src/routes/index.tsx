@@ -48,9 +48,11 @@ function Index() {
           tar da med neste måneds fakturaer (august legges til ved neste kjøring).
         </p>
         <p style={{ maxWidth: 780, lineHeight: 1.6, margin: 0, opacity: 0.7, fontSize: 13 }}>
-          NB: kun slide 12 (leverandørkostnader) er oppdatert til jan–jul 2026. De øvrige
-          slidene (inntekt, EBITDA, kapasitet, kunder) viser fortsatt jan–mai 2026 og
-          krever egen oppdatering med ferske tall fra salg/samtalestatistikk.
+          Oppdatert 11. september 2026: inntekt, kostnad og resultat er verifisert i
+          Tripletex til og med august 2026, anropstatistikken dekker juni–august (egen
+          slide 14), og pipeline-tallene er hentet fra Bigin per 11.09. Slide 12
+          (leverandørkostnader) dekker fortsatt januar–juli 2026 — augustfakturaene
+          kommer inn ved neste automatiske kjøring den 20.
         </p>
       </div>
     </div>
