@@ -35,7 +35,7 @@ scratchpad-kopi som forsvinner når økten avsluttes.**
 | GitHub-repo | `BookingkodenAS/Sentralbord-bemanning`, branch `main`. Hvis `git log origin/main` ikke viser Lovables nye commit innen ~4 minutter (poll med Monitor-tool, ikke Bash-sleep), hent filene direkte fra Lovable (`mcp__Lovable__read_file` for `src/content/presentation.html` og `src/routes/index.tsx`) og push dem manuelt til `main` som en sikkerhetsmekanisme (`git checkout -B tmp-sync origin/main`, kopier inn filene, commit, `git push origin tmp-sync:main`, rydd opp branchen etterpå). |
 | Bigin CRM — «Pipeline Geir» | Via `mcp__Zapier__*`, `selected_api: "BiginCLIAPI"`, org-id `915563000000023712` ("Bookingkoden AS"). Se eget avsnitt under for identifikasjon og spørremetode — IKKE anta at «Pipeline Geir» er noe annet enn selve hoved-pipelinen. |
 | Zisson-statistikk | Enten vedlagt av Geir i chatten (xlsx), eller hentet via `mcp__Microsoft_365__outlook_email_search` (avsender "zisson" / `query: "Zisson statistics"`) mot Geirs egen innboks. |
-| Tripletex | `mcp__Tripletex__*` direkte (search_invoices, search_supplier_invoices, search_ledger_postings). IKKE bruk `tripletex_run_script` for store batcher — den rammes lett av 429 rate-limiting; paginer heller direkte. |
+| Tripletex | Per 12. okt 2026 er kun disse direkte verktøyene tilgjengelige: `search_invoices`, `fetch_report`, `tripletex_execute`, `tripletex_run_script`, `execute_hour_registration`, `tripletex_create_upload_link`, `tripletex_sdk_docs`. `search_supplier_invoices` og `search_ledger_postings` finnes IKKE lenger som egne MCP-verktøy, men kan kalles som `tlx.search_supplier_invoices(...)` / `tlx.search_ledger_postings(...)` INNI `tripletex_run_script` (se `tripletex_sdk_docs` for skjema). Se det nye metodikk-gapet i Steg 2 før du regner Kostnad. |
 
 ## Steg 1 — Tripletex: salgsinntekter
 
@@ -56,6 +56,37 @@ Telenor (Telenor Norge AS / Telenor Infra AS) ELLER med en kostnadslinje postert
 (Innkjøp varer, høy mva) → avdeling VPN. Alle andre leverandørfakturaer → Sentralbordet. Denne
 regelen overstyrer Tripletex sin egen avdelingstagging på leverandørfakturaer, fordi de fleste
 leverandørfakturaer aldri var avdelingstagget i utgangspunktet.
+
+**VIKTIG — uløst metodikk-gap (funnet 12. okt 2026, ikke løst, les før du regner «Kostnad»):**
+`search_supplier_invoices` og `search_ledger_postings` (de to Tripletex-verktøyene denne skillen
+historisk har referert til) er **ikke lenger tilgjengelige verktøy** i denne MCP-versjonen. Kun
+`fetch_report`, `search_invoices`, `tripletex_run_script`, `tripletex_execute`,
+`execute_hour_registration`, `tripletex_create_upload_link`, `tripletex_sdk_docs` finnes nå — men
+`tlx.search_ledger_postings` og `tlx.search_supplier_invoices` kan fortsatt kalles INNI
+`tripletex_run_script` (se `tripletex_sdk_docs` for skjema).
+
+Tre ulike metoder ble testet 12. okt 2026 mot august 2026 (verifisert Kostnad = 172 326 NOK) for å
+kalibrere riktig metode, og INGEN av dem traff:
+- `search_ledger_postings` filtrert på `type=INVOICE_EXPENSE`, kontoene 4000–7999, med
+  VPN/Sentralbordet-override: **84 983 NOK** (for lavt — ekskluderer lønn og ikke-INVOICE_EXPENSE-postering).
+- `fetch_report("Resultatrapport for leverandører")` (alle leverandørkostnader, hovedbok-basert,
+  UTEN VPN-fradrag): **138 674 NOK** (nærmest, men ~19,5 % for lavt).
+- `fetch_report("Resultatrapport for avdelinger")` (full regnskapsmessig kostnad PR AVDELING, inkl.
+  lønn): Svartjeneste-avdelingen ga **353 644 NOK** (for høyt — inkluderer lønn/andre
+  hovedbok-posteringer langt utover leverandørfakturaer, og trenger selv VPN/Sentralbordet-override
+  på feiltaggede linjer, f.eks. Telenor tagget «Svartjeneste» og Zisson AS tagget «VPN»).
+
+**Mistanke:** Det finnes en EGEN, separat scheduled rutine «Avdelingstagging leverandørfakturaer»
+(trigger `trig_01FM9nUt9Xj2BhNfZ5XmfcmB`, kjører den 20. hver måned, kumulativ YTD-metode — ikke
+isolert per måned) som bygger et Excel-referanseark og oppdaterer slide 12 i presentasjonen med en
+FULL VPN/Sentralbordet-klassifisering av alle leverandørfakturaer. Det er trolig DENNE rutinens
+output (eller en manuell variant av den) som opprinnelig produserte referansetabellens
+«Kostnad»-tall — ikke noe som kan reproduseres fra en enkel `fetch_report`/`search_invoices`-kombinasjon
+i denne skillen. **Før du regner et nytt månedstall:** sjekk om rutinen for den 20. har kjørt for
+måneden du trenger, og bruk heller DET tallet. Hvis ikke — bruk `Resultatrapport for leverandører`
+(nærmest kalibrert metode) og FLAGG tydelig at tallet er en tilnærming (typisk ~15-20 % for lavt per
+kalibrering), både i Lovable-UI (fotnote) og i chat-oppsummeringen. Ikke lat som tallet er like godt
+verifisert som de historiske månedene.
 
 ## Steg 3 — Likviditet (AR/AP)
 
@@ -183,7 +214,7 @@ og hva korreksjonen ble. Dette bygger tillit til tallene over tid.
 
 ## Kjente fakta og historiske referanseverdier (OPPDATER DENNE TABELLEN ETTER HVER KJØRING)
 
-**Tripletex, sentralbordkunder, verifisert t.o.m. august 2026:**
+**Tripletex, sentralbordkunder, verifisert t.o.m. august 2026 (september er TILNÆRMET, se gap ovenfor):**
 | Måned | Inntekt | Kostnad | Resultat | Margin |
 |---|---|---|---|---|
 | Jan 2026 | 399 866 | 157 272 | 242 594 | 60,7 % |
@@ -194,7 +225,10 @@ og hva korreksjonen ble. Dette bygger tillit til tallene over tid.
 | Jun 2026 | 334 859 | 159 954 | 174 905 | 52,2 % |
 | Jul 2026 | 314 569 | 191 378 | 123 191 | 39,2 % |
 | Aug 2026 | 349 416 | 172 326 | 177 091 | 50,7 % |
-| **YTD jan–aug** | **2 712 376** | **1 358 903** | **1 353 473** | **49,9 %** |
+| **YTD jan–aug (verifisert)** | **2 712 376** | **1 358 903** | **1 353 473** | **49,9 %** |
+| Sep 2026 | 366 318 | 129 228 (TILNÆRMET — se metodikk-gap ovenfor, trolig ~15-20 % for lavt) | 237 090 (dermed trolig for høyt) | 64,7 % (trolig for høyt) |
+
+Sep 2026 er holdt UTENFOR YTD-summen til Kostnad-tallet er verifisert med riktig metode (se gap).
 
 Skattebetalingskrav 199 155 NOK: FRAFALT av Skatteetaten 10. september 2026. Ikke inkluder i
 driftsresultat eller AP-totalen.
@@ -208,16 +242,32 @@ driftsresultat eller AP-totalen.
 | Jun 2026 | 7 561 | 6 572 | 991 | 86,9 % | 64,9 % | 85,8 % |
 | Jul 2026 | 5 158 | 4 568 | 590 | 88,6 % | 72,2 % | 88,4 % |
 | Aug 2026 | 7 627 | 6 586 | 1 041 | 86,4 % | 63,2 % | 86,2 % |
+| Sep 2026 | — | — | — | IKKE TILGJENGELIG (se merknad under) | — | — |
 
 Feb og mai 2026 mangler kompatibel statistikkfil (agentdetaljrapport-format, ikke brukbart for SLA).
 
-**Bigin «Pipeline Geir», sist oppdatert 11. sep 2026 kl. 14:12 (bekreftet uendret siden forrige
-måling samme dag kl. ~11:40 — 82 poster totalt, 72 med reelt beløp):**
-- Åpen pipeline: 117 450 NOK/mnd · 29 deals
-- Avansert stadium: 56 550 NOK/mnd · 13 deals
-- Overforfalte åpne deals: 12 500 NOK/mnd · 6 deals
-- Vunnet YTD 2026: 58 230 NOK/mnd · 13 deals (14 vunnet all-time)
-- Winrate: 32,6 % (14 vunnet / 43 avgjorte)
+**Zisson-begrensning funnet 12. okt 2026:** `mcp__Microsoft_365__read_resource` kan IKKE lese
+binære e-post-vedlegg (returnerer "Binary attachment — content cannot be returned inline").
+Månedsfilen for september ("Zisson statistics We4you- Måned (4830) 2026-09-30.xlsx", mottatt
+1. okt 2026) lå KUN som e-postvedlegg — ikke i SharePoint-mappen
+`Internt Sharepoint/We4you/Finans/Fakturering/Fakturering Sentralbord/Fakturering 2026/Statistikk/`
+der tidligere måneder (jan–aug) etter hvert dukker opp (med variabel forsinkelse, ikke en fast
+automatisert synk — august lå der, september gjorde det ikke per 12. okt, 11 dager etter mottak).
+Hvis månedsfilen IKKE ligger i SharePoint-mappen når du kjører denne skillen: be Geir laste den opp
+dit (eller lime inn xlsx direkte i chatten), og fortsett uten Zisson-tall for den måneden i stedet
+for å gjette eller la gamle tall stå umarkert som ferske.
+
+**Bigin «Pipeline Geir», sist oppdatert 12. okt 2026 (87 poster totalt, 76 med reelt beløp):**
+- Åpen pipeline: 113 950 NOK/mnd · 28 deals
+- Avansert stadium: 43 050 NOK/mnd · 11 deals
+- Overforfalte åpne deals: 85 950 NOK/mnd · 20 deals (kraftig økning fra 12 500/6 deals i sep — mange
+  deals har passert `Closing_Date` uten å bli flyttet til Vunnet/Tapt; flagg dette til Geir hver
+  kjøring til det er ryddet opp)
+- Vunnet YTD 2026: 70 230 NOK/mnd · 14 deals (17 vunnet all-time)
+- Winrate: 31,5 % (17 vunnet / 54 avgjorte)
+
+Tidligere måling (11. sep 2026 kl. 14:12, 82 poster, 72 med beløp): Åpen 117 450/29, Avansert
+56 550/13, Overforfalt 12 500/6, Vunnet YTD 58 230/13, Winrate 32,6 %.
 
 **Marion lønnsscenario** (uendret siden forrige kjøring — se den eldre «sentralbordet»-skillen for
 full utledning dersom det trengs på nytt; oppsummert: Marion slutter 25. nov 2026, erstattes av Hege
